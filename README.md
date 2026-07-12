@@ -10,7 +10,7 @@ DriverChecker is a utility that will iterate through all currently loaded driver
 * Any drivers that are not digitally signed, either via embedded signature or catalog file
 * Any drivers that exist on the LOLDrivers list of vulnerable drivers
 
-For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-02-25-extract-resource-ghidra/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
+For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
 
 ---
 
