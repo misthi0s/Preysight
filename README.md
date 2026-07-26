@@ -76,8 +76,5 @@ Some legitimate results may be returned from running this tool, due to how certa
 ---
 
 ## Issues
-<<<<<<< HEAD
+
 If you run into any issues with Preysight, please feel free to open an issue in the repository.
-=======
-If you run into any issues with DriverChecker, please feel free to open an issue in the repository.
->>>>>>> c7059f330b420634062ab36c98e95f583169d34c
