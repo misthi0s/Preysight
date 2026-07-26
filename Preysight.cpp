@@ -48,10 +48,20 @@ int main(int argc, char* argv[])
 {
     enableANSI();
     BOOL networkArg = true;
+    std::string outputPath;
     std::vector<std::string> args(argv + 1, argv + argc);
 
     if (std::find(args.begin(), args.end(), "--no-network") != args.end()) {
         networkArg = false;
+    }
+
+    auto outIt = std::find(args.begin(), args.end(), "--output");
+    if (outIt != args.end()) {
+        if (outIt + 1 == args.end()) {
+            std::cout << "[-] --output requires a file path" << std::endl;
+            return 1;
+        }
+        outputPath = *(outIt + 1);
     }
 
     printHeader();
@@ -64,8 +74,8 @@ int main(int argc, char* argv[])
     DWORD lpcbNeeded;
     CHAR driverFilePath[1024];
     CHAR driverFileName[1024];
-    int cDrivers, i;
-    std::vector<std::string> vFileExists, vFileExtension, vFilePath, vLolDrivers, vTrust;
+    int cDrivers = 0, i;
+    std::vector<std::string> vFileExists, vFileExtension, vFilePath, vLolDrivers, vTrust, vExpiredCert;
     std::unordered_set<std::string> lolDriverHashes;
 
     BOOL enumDrivers = EnumDeviceDrivers(drivers, sizeof(drivers), &lpcbNeeded);
@@ -116,27 +126,44 @@ int main(int argc, char* argv[])
                             vLolDrivers.push_back(normalizedPath);
                         }
                     }
-                    if (!verifyDriverSignatureEmbedded(normalizedPath)) {
-                        if (!verifyDriverSignatureCatalog(normalizedPath)) {
-                            vTrust.push_back(normalizedPath);
-                        }
+                    DriverSigInfo emb = verifyDriverSignatureEmbedded(normalizedPath);
+                    BOOL trusted = emb.trusted;
+                    BOOL certChecked = emb.certChecked;
+                    BOOL certExpired = emb.certExpired;
+                    if (!trusted || !certChecked) {
+                        DriverSigInfo cat = verifyDriverSignatureCatalog(normalizedPath);
+                        if (!trusted) trusted = cat.trusted;
+                        if (!certChecked) { certChecked = cat.certChecked; certExpired = cat.certExpired; }
                     }
+                    if (!trusted) vTrust.push_back(normalizedPath);
+                    if (certExpired) vExpiredCert.push_back(normalizedPath);
                 }
+            }
+        }
+        if (!outputPath.empty()) {
+            if (writeJsonReport(outputPath, networkArg, vFileExists, vFileExtension, vFilePath, vTrust, vExpiredCert, vLolDrivers)) {
+                std::cout << "[+] JSON report written to " << outputPath << std::endl;
+            }
+            else {
+                std::cout << "[-] Failed to write JSON to " << outputPath << std::endl;
             }
         }
         clearScreen();
         printHeader();
-        std::cout << "\nNonexistent Files:" << std::endl;
-        readVector(vFileExists);
-        std::cout << "\nAbnormal File Extension:" << std::endl;
-        readVector(vFileExtension);
-        std::cout << "\nAbnormal File Path:" << std::endl;
-        readVector(vFilePath);
-        std::cout << "\nTrust Verification Failed:" << std::endl;
-        readVector(vTrust);
-        if (networkArg) {
-            std::cout << "\nLOLDrivers:" << std::endl;
-            readVector(vLolDrivers);
-        }
+
+        size_t totalFlagged = vLolDrivers.size() + vTrust.size() + vExpiredCert.size() +
+                              vFilePath.size() + vFileExtension.size() + vFileExists.size();
+
+        printSummary(networkArg, vLolDrivers, vTrust, vExpiredCert, vFilePath, vFileExtension, vFileExists);
+
+        if (networkArg) printSection("LOLDrivers", vLolDrivers, "[X]", "\033[91m");
+        printSection("Trust Verification Failed", vTrust, "[!]", "\033[91m");
+        printSection("Signing Certificate Expired at Signing Time", vExpiredCert, "[!]", "\033[91m");
+        printSection("Abnormal File Path", vFilePath, "[?]", "\033[93m");
+        printSection("Abnormal File Extension", vFileExtension, "[?]", "\033[93m");
+        printSection("Nonexistent Files", vFileExists, "[?]", "\033[93m");
+
+        std::cout << "\n[+] Scan complete \xe2\x80\x94 " << cDrivers << " drivers enumerated, "
+                  << totalFlagged << " flagged." << std::endl;
     }
 }

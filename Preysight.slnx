@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="DriverChecker.vcxproj" Id="0b9764d7-20a1-4413-956c-a7aac0236c53" />
+  <Project Path="Preysight.vcxproj" Id="0b9764d7-20a1-4413-956c-a7aac0236c53" />
 </Solution>

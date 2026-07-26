@@ -1,13 +1,14 @@
 <head>
-<h1 align=center>DriverChecker - Suspicious Driver Scanner</h1>
+<h1 align=center>Preysight - Device Driver Anomaly Scanner</h1>
 </head>
 
-DriverChecker is a utility that will iterate through all currently loaded drivers and look for any potentially suspicious or malicious drivers, based on a certain set of criteria. The current set of criteria it looks for is as follows:
+Preysight is a utility that will iterate through all currently loaded drivers and look for any potentially suspicious or malicious drivers, based on a certain set of criteria. The current set of criteria it looks for is as follows:
 
 * Nonexistent driver file on the filesystem
 * Abnormal file extension for a driver file
 * Abnormal file path from which the driver was loaded
 * Any drivers that are not digitally signed, either via embedded signature or catalog file
+* Any drivers that were signed with an already expired signing certificate
 * Any drivers that exist on the LOLDrivers list of vulnerable drivers
 
 For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-02-25-extract-resource-ghidra/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
@@ -18,7 +19,7 @@ For a more detailed explanation of this criterion and for real-world examples of
 
 Visit the Releases page of this repository for a pre-compiled binary of the tool.
 
-If you want to  build the binary manually, simply open the `DriverChecker.slnx` file in Visual Studio and build the solution. The tool requires the following external libraries to build properly:
+If you want to  build the binary manually, simply open the `Preysight.slnx` file in Visual Studio and build the solution. The tool requires the following external libraries to build properly:
 
 * nlohmann-json
 * openssl
@@ -30,7 +31,7 @@ If you want to  build the binary manually, simply open the `DriverChecker.slnx` 
 
 ## Usage
 
-DriverChecker currently supports the following parameters:
+Preysight currently supports the following parameters:
 
 <table>
 <tr>
@@ -40,6 +41,10 @@ DriverChecker currently supports the following parameters:
 <tr>
 <td>--no-network</td>
 <td>Do not run any of the modules that require network access (IE, pulling the LOLDrivers list from the website)</td>
+</tr>
+<tr>
+<td>--output {file_path}</td>
+<td>Save the output of Preysight into a JSON-formatted file at {file_path} location.</td>
 </tr>
 </table>
 
@@ -57,12 +62,18 @@ Some legitimate results may be returned from running this tool, due to how certa
 ---
 
 ## Changelog
+<h3>[v1.0] - 7/26/2026</h3>
 
-<h3>[v0.0.1] - 7/12/2026</h3>
+* Renamed application to Preysight
+* Added "driver signed with expired certificate" module
+* Added the ability to save results to JSON file
+* Reformatted console output to something cleaner and more readable
+
+<h3>[v0.1] - 7/12/2026</h3>
 
 * Initial publish
 
 ---
 
 ## Issues
-If you run into any issues with DriverChecker, please feel free to open an issue in the repository.
+If you run into any issues with Preysight, please feel free to open an issue in the repository.

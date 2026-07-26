@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "driver-checker",
+  "name": "preysight",
   "version": "0.1",
   "dependencies": [
     "nlohmann-json",
