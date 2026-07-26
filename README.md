@@ -11,7 +11,7 @@ Preysight is a utility that will iterate through all currently loaded drivers an
 * Any drivers that were signed with an already expired signing certificate
 * Any drivers that exist on the LOLDrivers list of vulnerable drivers
 
-For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-02-25-extract-resource-ghidra/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
+For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
 
 ---
 
@@ -76,4 +76,8 @@ Some legitimate results may be returned from running this tool, due to how certa
 ---
 
 ## Issues
+<<<<<<< HEAD
 If you run into any issues with Preysight, please feel free to open an issue in the repository.
+=======
+If you run into any issues with DriverChecker, please feel free to open an issue in the repository.
+>>>>>>> c7059f330b420634062ab36c98e95f583169d34c
