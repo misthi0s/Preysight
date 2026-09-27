@@ -3,6 +3,7 @@
 #include <iostream>
 #include <filesystem>
 #include <vector>
+#include <cstring>
 
 #include "config.h"
 #include "functions.h"
@@ -44,6 +45,41 @@ BOOL cFilePath(std::string filePath) {
     return true;
 }
 
+BOOL cUnquotedService(std::string filePath) {
+    HKEY hKey;
+    LPCSTR serviceKeyPath = "SYSTEM\\CurrentControlSet\\Services";
+
+    RegOpenKeyExA(HKEY_LOCAL_MACHINE, serviceKeyPath, 0, KEY_READ, &hKey);
+
+    DWORD index = 0;
+    CHAR subKeyName[256];
+    DWORD subKeyNameSize = sizeof(subKeyName) / sizeof(CHAR);
+
+    while (RegEnumKeyExA(hKey, index, subKeyName, &subKeyNameSize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
+        HKEY hSubKey;
+
+        RegOpenKeyExA(hKey, subKeyName, 0, KEY_READ, &hSubKey);
+        CHAR imagePath[1024];
+        DWORD bufSize = sizeof(imagePath);
+
+        LONG valueStatus = RegGetValueA(hSubKey, NULL, "ImagePath", RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ, NULL, imagePath, &bufSize);
+        if (valueStatus == ERROR_SUCCESS) {
+            if (std::string_view(imagePath).find(filePath) != std::string_view::npos) {
+                if (!(std::strchr(imagePath, '"') != nullptr)) {
+                    RegCloseKey(hSubKey);
+                    RegCloseKey(hKey);
+                    return true;
+                }
+            }
+        }
+        RegCloseKey(hSubKey);
+        subKeyNameSize = sizeof(subKeyName) / sizeof(CHAR);
+        index++;
+    }
+    RegCloseKey(hKey);
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
     enableANSI();
@@ -75,7 +111,7 @@ int main(int argc, char* argv[])
     CHAR driverFilePath[1024];
     CHAR driverFileName[1024];
     int cDrivers = 0, i;
-    std::vector<std::string> vFileExists, vFileExtension, vFilePath, vLolDrivers, vTrust, vExpiredCert;
+    std::vector<std::string> vFileExists, vFileExtension, vFilePath, vLolDrivers, vTrust, vExpiredCert, vUnquotedPath;
     std::unordered_set<std::string> lolDriverHashes;
 
     BOOL enumDrivers = EnumDeviceDrivers(drivers, sizeof(drivers), &lpcbNeeded);
@@ -137,11 +173,16 @@ int main(int argc, char* argv[])
                     }
                     if (!trusted) vTrust.push_back(normalizedPath);
                     if (certExpired) vExpiredCert.push_back(normalizedPath);
+                    if (normalizedPath.find(' ') != std::string::npos) {
+                        if (cUnquotedService(driverFilePath)) {
+                            vUnquotedPath.push_back(normalizedPath);
+                        }
+                    }
                 }
             }
         }
         if (!outputPath.empty()) {
-            if (writeJsonReport(outputPath, networkArg, vFileExists, vFileExtension, vFilePath, vTrust, vExpiredCert, vLolDrivers)) {
+            if (writeJsonReport(outputPath, networkArg, vFileExists, vFileExtension, vFilePath, vTrust, vExpiredCert, vLolDrivers, vUnquotedPath)) {
                 std::cout << "[+] JSON report written to " << outputPath << std::endl;
             }
             else {
@@ -152,9 +193,9 @@ int main(int argc, char* argv[])
         printHeader();
 
         size_t totalFlagged = vLolDrivers.size() + vTrust.size() + vExpiredCert.size() +
-                              vFilePath.size() + vFileExtension.size() + vFileExists.size();
+                              vFilePath.size() + vFileExtension.size() + vFileExists.size() + vUnquotedPath.size();
 
-        printSummary(networkArg, vLolDrivers, vTrust, vExpiredCert, vFilePath, vFileExtension, vFileExists);
+        printSummary(networkArg, vLolDrivers, vTrust, vExpiredCert, vFilePath, vFileExtension, vFileExists, vUnquotedPath);
 
         if (networkArg) printSection("LOLDrivers", vLolDrivers, "[X]", "\033[91m");
         printSection("Trust Verification Failed", vTrust, "[!]", "\033[91m");
@@ -162,6 +203,7 @@ int main(int argc, char* argv[])
         printSection("Abnormal File Path", vFilePath, "[?]", "\033[93m");
         printSection("Abnormal File Extension", vFileExtension, "[?]", "\033[93m");
         printSection("Nonexistent Files", vFileExists, "[?]", "\033[93m");
+        printSection("Unquoted Service Paths", vUnquotedPath, "[?]", "\033[93m");
 
         std::cout << "\n[+] Scan complete \xe2\x80\x94 " << cDrivers << " drivers enumerated, "
                   << totalFlagged << " flagged." << std::endl;

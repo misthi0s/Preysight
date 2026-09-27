@@ -18,7 +18,7 @@
 #pragma comment(lib, "wintrust")
 
 using json = nlohmann::json;
-char versionNumber[] = "1.0";
+char versionNumber[] = "1.1";
 
 static const char* const BOX_H  = "\xe2\x94\x80";
 static const char* const BOX_V  = "\xe2\x94\x82";
@@ -254,7 +254,8 @@ void printSummary(bool networkUsed,
 	const std::vector<std::string>& vExpiredCert,
 	const std::vector<std::string>& vFilePath,
 	const std::vector<std::string>& vFileExtension,
-	const std::vector<std::string>& vFileExists) {
+	const std::vector<std::string>& vFileExists,
+	const std::vector<std::string>& vUnquotedPath) {
 
 	struct Row { std::string label; size_t count; const char* color; };
 	std::vector<Row> rows;
@@ -264,6 +265,7 @@ void printSummary(bool networkUsed,
 	rows.push_back({ "Abnormal file path", vFilePath.size(), CLR_YELLOW });
 	rows.push_back({ "Abnormal file extension", vFileExtension.size(), CLR_YELLOW });
 	rows.push_back({ "Nonexistent files", vFileExists.size(), CLR_YELLOW });
+	rows.push_back({ "Unquoted service paths", vUnquotedPath.size(), CLR_YELLOW });
 
 	const int inner = 45;
 	const int leftPad = 2;
@@ -422,7 +424,8 @@ BOOL writeJsonReport(const std::string& outputPath,
 	const std::vector<std::string>& vFilePath,
 	const std::vector<std::string>& vTrust,
 	const std::vector<std::string>& vExpiredCert,
-	const std::vector<std::string>& vLolDrivers) {
+	const std::vector<std::string>& vLolDrivers,
+	const std::vector<std::string>& vUnquotedPath) {
 	SYSTEMTIME st;
 	GetSystemTime(&st);
 	char timestamp[32];
@@ -448,7 +451,8 @@ BOOL writeJsonReport(const std::string& outputPath,
 		{ "abnormal_extension", vFileExtension },
 		{ "abnormal_path", vFilePath },
 		{ "trust_failed", vTrust },
-		{ "expired_cert", vExpiredCert }
+		{ "expired_cert", vExpiredCert },
+		{ "unquoted_path", vUnquotedPath }
 	};
 	if (networkUsed) {
 		report["results"]["loldrivers"] = vLolDrivers;

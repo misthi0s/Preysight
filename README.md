@@ -10,6 +10,7 @@ Preysight is a utility that will iterate through all currently loaded drivers an
 * Any drivers that are not digitally signed, either via embedded signature or catalog file
 * Any drivers that were signed with an already expired signing certificate
 * Any drivers that exist on the LOLDrivers list of vulnerable drivers
+* Drivers backed by services that contain unquoted service paths
 
 For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
 
@@ -62,6 +63,10 @@ Some legitimate results may be returned from running this tool, due to how certa
 ---
 
 ## Changelog
+<h3>[v1.1] - 9/27/2026</h3>
+
+* Added checker for unquoted service paths
+
 <h3>[v1.0] - 7/26/2026</h3>
 
 * Renamed application to Preysight

@@ -17,7 +17,8 @@ void printSummary(bool networkUsed,
 	const std::vector<std::string>& vExpiredCert,
 	const std::vector<std::string>& vFilePath,
 	const std::vector<std::string>& vFileExtension,
-	const std::vector<std::string>& vFileExists);
+	const std::vector<std::string>& vFileExists,
+	const std::vector<std::string>& vUnquotedPath);
 void printSection(const std::string& title,
 	const std::vector<std::string>& items,
 	const std::string& glyph,
@@ -36,7 +37,8 @@ BOOL writeJsonReport(const std::string& outputPath,
 	const std::vector<std::string>& vFilePath,
 	const std::vector<std::string>& vTrust,
 	const std::vector<std::string>& vExpiredCert,
-	const std::vector<std::string>& vLolDrivers);
+	const std::vector<std::string>& vLolDrivers,
+	const std::vector<std::string>& vUnquotedPath);
 void clearScreen();
 void printHeader();
 void enableANSI();
