@@ -11,6 +11,12 @@ Preysight is a utility that will iterate through all currently loaded drivers an
 * Any drivers that were signed with an already expired signing certificate
 * Any drivers that exist on the LOLDrivers list of vulnerable drivers
 
+Preysight also checks the state of the system to determine if any configurations are present on it that could make the loading of malicious drivers easier to do. The current list of system configuration checks is as follows:
+
+* Level of Code Integrity enabled, whether it's standard CI, HVCI, or HVCI Strict Mode
+* Whether or not Test Signing Mode is currently enabled
+* Whether or not the Microsoft Vulnerable Driver Blocklist is currently enabled and enforced
+
 For a more detailed explanation of this criterion and for real-world examples of malware being found with the tool, please visit the supplemental [blog post](https://misthi0s.dev/posts/2026-07-12-driverchecker-malicious-drivers-tool/) on my website.
 
 ---
@@ -62,6 +68,13 @@ Some legitimate results may be returned from running this tool, due to how certa
 ---
 
 ## Changelog
+<h3>[v1.1] - 10/10/2026</h3>
+
+* Added system-level checks, including Code Integrity, Test Signing, and the Microsoft Vulnerable Driver Blocklist
+* Included new section in the JSON output file called "system_config" that contains the system-level check information
+* Renamed the "scan" header in the JSON file to "info" to better represent the section
+* Created new formatting table to hold the sytem-level checks section
+
 <h3>[v1.0] - 7/26/2026</h3>
 
 * Renamed application to Preysight

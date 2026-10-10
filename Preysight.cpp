@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <winternl.h>
 #include <psapi.h>
 #include <iostream>
 #include <filesystem>
@@ -78,10 +79,14 @@ int main(int argc, char* argv[])
     std::vector<std::string> vFileExists, vFileExtension, vFilePath, vLolDrivers, vTrust, vExpiredCert;
     std::unordered_set<std::string> lolDriverHashes;
 
+    std::cout << "\n[+] Checking system-level configuration settings..." << std::endl;
+    ULONG ciBitmask = CodeIntegrityCheck();
+    int vulnDriverCheck = RegistryValueCheck();
+
     BOOL enumDrivers = EnumDeviceDrivers(drivers, sizeof(drivers), &lpcbNeeded);
 
     if (networkArg) {
-        std::cout << "\n[+] Gathering LOLDrivers list..." << std::endl;
+        std::cout << "[+] Gathering LOLDrivers list..." << std::endl;
         std::string lolDriverInfo = HTTPGetRequest(L"www.loldrivers.io", L"api/drivers.json");
         lolDriverHashes = buildHashSet(lolDriverInfo);
     }
@@ -140,8 +145,27 @@ int main(int argc, char* argv[])
                 }
             }
         }
+
+        std::string ciEnabled = ((ciBitmask & CODEINTEGRITY_OPTION_ENABLED) ? "YES" : "NO");
+        std::string testSigning = ((ciBitmask & CODEINTEGRITY_OPTION_TESTSIGN) ? "YES" : "NO");
+        std::string hvciEnabled = ((ciBitmask & CODEINTEGRITY_OPTION_HVCI_KMCI_ENABLED) ? "YES" : "NO");
+        std::string hvciStrict = ((ciBitmask & CODEINTEGRITY_OPTION_HVCI_KMCI_STRICTMODE_ENABLED) ? "YES" : "NO");
+
+        std::string sVulnDriverCheck;
+        switch (vulnDriverCheck) {
+        case 0:
+            sVulnDriverCheck = "YES";
+            break;
+        case 1:
+            sVulnDriverCheck = "NO";
+            break;
+        case 2:
+            sVulnDriverCheck = "N/A";
+            break;
+        }
+
         if (!outputPath.empty()) {
-            if (writeJsonReport(outputPath, networkArg, vFileExists, vFileExtension, vFilePath, vTrust, vExpiredCert, vLolDrivers)) {
+            if (writeJsonReport(outputPath, networkArg, vFileExists, vFileExtension, vFilePath, vTrust, vExpiredCert, vLolDrivers, ciEnabled, testSigning, hvciEnabled, hvciStrict, sVulnDriverCheck)) {
                 std::cout << "[+] JSON report written to " << outputPath << std::endl;
             }
             else {
@@ -150,6 +174,8 @@ int main(int argc, char* argv[])
         }
         clearScreen();
         printHeader();
+
+        printSystemConfigs(ciEnabled, testSigning, hvciEnabled, hvciStrict, sVulnDriverCheck);
 
         size_t totalFlagged = vLolDrivers.size() + vTrust.size() + vExpiredCert.size() +
                               vFilePath.size() + vFileExtension.size() + vFileExists.size();

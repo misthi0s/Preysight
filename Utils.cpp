@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <winternl.h>
 #include <winhttp.h>
 #include <iostream>
 #include <vector>
@@ -15,10 +16,11 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "crypt32.lib")
 #pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "ntdll.lib")
 #pragma comment(lib, "wintrust")
 
 using json = nlohmann::json;
-char versionNumber[] = "1.0";
+char versionNumber[] = "1.1";
 
 static const char* const BOX_H  = "\xe2\x94\x80";
 static const char* const BOX_V  = "\xe2\x94\x82";
@@ -27,6 +29,7 @@ static const char* const BOX_TR = "\xe2\x94\x90";
 static const char* const BOX_BL = "\xe2\x94\x94";
 static const char* const BOX_BR = "\xe2\x94\x98";
 static const char* const CLR_RED    = "\033[91m";
+static const char* const CLR_GREEN = "\033[32m";
 static const char* const CLR_YELLOW = "\033[93m";
 static const char* const CLR_RESET  = "\033[0m";
 
@@ -109,7 +112,7 @@ std::string HTTPGetRequest(LPCWSTR httpUrl, LPCWSTR httpUri) {
 	DWORD dwDownloaded = 0;
 	std::string responseData;
 
-	hSession = WinHttpOpen(L"Preysight/1.0",
+	hSession = WinHttpOpen(L"Preysight/1.1",
 		WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 		WINHTTP_NO_PROXY_NAME,
 		WINHTTP_NO_PROXY_BYPASS, 0);
@@ -313,6 +316,73 @@ void printSection(const std::string& title,
 	}
 }
 
+void printSystemConfigs(std::string ciEnabled, std::string testSigning, std::string hvciEnabled, std::string hvciStrict, std::string vulnDriverCheck) {
+
+	struct Row { std::string label; std::string boolean; const char* color; };
+	std::vector<Row> rows;
+
+	if (ciEnabled == "NO") {
+		rows.push_back({ "Code Integrity Enabled", ciEnabled, CLR_RED });
+	}
+	else {
+		rows.push_back({ "Code Integrity Enabled", ciEnabled, CLR_GREEN });
+	}
+
+	if (testSigning == "YES") {
+		rows.push_back({ "Testsigning Enabled", testSigning, CLR_RED });
+	}
+	else {
+		rows.push_back({ "Testsigning Enabled", testSigning, CLR_GREEN });
+	}
+
+	if (hvciEnabled == "NO") {
+		rows.push_back({ "HVCI (KMCI) Enabled", hvciEnabled, CLR_RED });
+	}
+	else {
+		rows.push_back({ "HVCI (KMCI) Enabled", hvciEnabled, CLR_GREEN });
+	}
+
+	if (hvciStrict == "NO") {
+		rows.push_back({ "HVCI (KMCI) Strict Mode", hvciStrict, CLR_RED });
+	}
+	else {
+		rows.push_back({ "HVCI (KMCI) Strict Mode", hvciStrict, CLR_GREEN });
+	}
+
+	if (vulnDriverCheck == "YES") rows.push_back({ "Vulnerable Driver Blocklist Enabled", "YES", CLR_GREEN });
+	else if (vulnDriverCheck == "NO") rows.push_back({ "Vulnerable Driver Blocklist Enabled", "NO", CLR_RED });
+	else if (vulnDriverCheck == "N/A") rows.push_back({"Vulnerable Driver Blocklist Enabled", "N/A", CLR_YELLOW});
+
+	const int inner = 45;
+	const int leftPad = 2;
+	const int rightPad = 2;
+	const int countWidth = 4;
+	const int labelZone = inner - leftPad - rightPad - countWidth;
+
+	std::string topLabel = " System Configurations ";
+	std::cout << "\n" << BOX_TL << BOX_H << topLabel;
+	int topUsed = 1 + (int)topLabel.size();
+	for (int i = 0; i < inner - topUsed; i++) std::cout << BOX_H;
+	std::cout << BOX_TR << "\n";
+
+	for (const auto& row : rows) {
+		std::string label = row.label + " ";
+		while ((int)label.size() < labelZone) label += ".";
+		if ((int)label.size() > labelZone) label = label.substr(0, labelZone);
+
+		std::string rowBool = row.boolean;
+		while ((int)rowBool.size() < countWidth) rowBool = " " + rowBool;
+
+		std::cout << BOX_V << "  " << label;
+		std::cout << row.color << rowBool << CLR_RESET;
+		std::cout << "  " << BOX_V << "\n";
+	}
+
+	std::cout << BOX_BL;
+	for (int i = 0; i < inner; i++) std::cout << BOX_H;
+	std::cout << BOX_BR << "\n";
+}
+
 static BOOL walkSignerAndCheckExpiry(HANDLE hWVTStateData, BOOL* pDetermined) {
 	*pDetermined = FALSE;
 	if (!hWVTStateData) return FALSE;
@@ -422,7 +492,12 @@ BOOL writeJsonReport(const std::string& outputPath,
 	const std::vector<std::string>& vFilePath,
 	const std::vector<std::string>& vTrust,
 	const std::vector<std::string>& vExpiredCert,
-	const std::vector<std::string>& vLolDrivers) {
+	const std::vector<std::string>& vLolDrivers,
+    std::string ciEnabled,
+	std::string testSigning,
+	std::string hvciEnabled,
+	std::string hvciStrict,
+	std::string vulnDriverCheck) {
 	SYSTEMTIME st;
 	GetSystemTime(&st);
 	char timestamp[32];
@@ -436,7 +511,14 @@ BOOL writeJsonReport(const std::string& outputPath,
 	}
 
 	json report;
-	report["scan"] = {
+	report["system_config"] = {
+		{ "ci_enabled", ciEnabled },
+		{ "test_signing_enabled", testSigning },
+		{ "hvci_enabled", hvciEnabled },
+		{ "hvci_strict_mode", hvciStrict },
+		{ "vdb_enabled", vulnDriverCheck }
+	};
+	report["info"] = {
 		{ "tool", "Preysight" },
 		{ "version", versionNumber },
 		{ "timestamp_utc", timestamp },
@@ -463,4 +545,43 @@ BOOL writeJsonReport(const std::string& outputPath,
 		return FALSE;
 	}
 	return TRUE;
+}
+
+ULONG CodeIntegrityCheck() {
+	SYSTEM_CODEINTEGRITY_INFORMATION ciInfo = { 0 };
+	ciInfo.Length = sizeof(SYSTEM_CODEINTEGRITY_INFORMATION);
+	ULONG returnLength = 0;
+
+	NTSTATUS status = NtQuerySystemInformation(
+		SystemCodeIntegrityInformation,
+		&ciInfo,
+		sizeof(ciInfo),
+		&returnLength
+	);
+	if (NT_ERROR(status)) {
+		return 0;
+	}
+	return ciInfo.CodeIntegrityOptions;
+}
+
+int RegistryValueCheck() {
+	HKEY hKey;
+	DWORD pvData;
+	DWORD pcbData = sizeof(pvData);
+
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\CI\\Config", NULL, KEY_READ, &hKey) != ERROR_SUCCESS) {
+		std::cout << "[-] Unable to open Registry key! Error Code: " << GetLastError() << std::endl;
+		return 2;
+	}
+	if (RegGetValueW(hKey, NULL, L"VulnerableDriverBlocklistEnable", RRF_RT_REG_DWORD, NULL, &pvData, &pcbData) != ERROR_SUCCESS) {
+		std::cout << "[-] Unable to open Registry value! Error Code: " << GetLastError() << std::endl;
+		return 2;
+	}
+
+	if (pvData == 1) {
+		return 0;
+	}
+	else {
+		return 1;
+	}
 }
